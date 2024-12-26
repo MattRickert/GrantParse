@@ -1,0 +1,6 @@
+import requests
+
+url = 'https://blog.skillfactory.ru/parsing-saytov-na-python/'
+response = requests.get(url)
+response.raise_for_status()
+print(response.text)
