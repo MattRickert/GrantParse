@@ -1,6 +1,28 @@
-import requests
+from bs4 import BeautifulSoup
+import requests, nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import SnowballStemmer
 
-url = 'https://blog.skillfactory.ru/parsing-saytov-na-python/'
-response = requests.get(url)
+stopwords_ru = stopwords.words("russian")
+stopwords_ru[0:11]
+stemmer = SnowballStemmer("russian")
+
+nltk.download('punkt_tab')
+
+url = 'https://sonko.rkomi.ru/projects/1280/'
+response = requests.get(url, verify=False)
 response.raise_for_status()
-print(response.text)
+
+soup = BeautifulSoup(response.text, 'lxml')
+
+para_title = soup.find(lambda tag:  tag.name=="h3" and "Краткое описание проекта" in tag.text)
+paragraph = para_title.find_next("div")
+paragraph = paragraph.text
+
+words = nltk.word_tokenize(paragraph)
+words = [word.lower() for word in words if word.isalpha()]
+words = [word for word in words if word not in stopwords.words('russian')]
+lemmatized_words = [stemmer.stem(word) for word in words]
+
+print(lemmatized_words)
