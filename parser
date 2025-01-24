@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup
 import requests, nltk
+import pandas as pd
+
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
@@ -10,19 +12,35 @@ stemmer = SnowballStemmer("russian")
 
 nltk.download('punkt_tab')
 
-url = 'https://sonko.rkomi.ru/projects/1280/'
-response = requests.get(url, verify=False)
-response.raise_for_status()
+base_url = 'https://sonko.rkomi.ru/projects/{}'
 
-soup = BeautifulSoup(response.text, 'lxml')
+n = 1000
 
-para_title = soup.find(lambda tag:  tag.name=="h3" and "Краткое описание проекта" in tag.text)
-paragraph = para_title.find_next("div")
-paragraph = paragraph.text
+def fetch_text(url):
+    response = requests.get(url, verify=False)
+    response.encoding = 'utf-8'
+    return response.text
 
-words = nltk.word_tokenize(paragraph)
-words = [word.lower() for word in words if word.isalpha()]
-words = [word for word in words if word not in stopwords.words('russian')]
-lemmatized_words = [stemmer.stem(word) for word in words]
+data = set()
+for i in range(1, n + 1):
+    url = base_url.format(i)
+    html = fetch_text(url)
+    soup = BeautifulSoup(html, 'html.parser')
+    if soup.find(lambda tag:  tag.name=="h3" and "Краткое описание проекта" in tag.text):
+        para_title = soup.find(lambda tag:  tag.name=="h3" and "Краткое описание проекта" in tag.text)
+        paragraph = para_title.find_next("div")
+        
+        paragraph = paragraph.text
+        words = nltk.word_tokenize(paragraph)
+        words = [word.lower() for word in words if word.isalpha()]
+        words = [word for word in words if word not in stopwords.words('russian')]
+        pieces = [stemmer.stem(word) for word in words]
+        pieces = (' '.join(pieces))
+        status = soup.find("div", class_="projects-detail__status")
+        
+        for piece in pieces:
+            data.add((pieces, status.text))
 
-print(lemmatized_words)
+df = pd.DataFrame(list(data), columns=['pieces', 'status'])
+
+df.to_csv('dataset.csv', index=False)
